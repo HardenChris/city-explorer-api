@@ -5,7 +5,7 @@ const express = require('express')
 const cors = require('cors');
 const axios = require('axios')
 const { response } = require('express');
-const weather = require('./data/weather.json')
+const weatherData = require('./data/weather.json')
 
 
 const app = express();
@@ -20,36 +20,50 @@ app.get('/weather', handleGetWeather);
 app.get('/movies', handleGetMovies);
 app.get('/*', (req, res) => res.status(404).send('not found'))
 
-
-async function handleGetWeather (req, res) {
-    const cityName = req.query.city
-    const lat = req.query.lat
-    const lon = req.query.lon
-    const url=`https://api.weatherbit.io/v2.0/forecast/daily?lat=${lat}&lon=${lon}&key=${process.env.WEATHER_API_KEY}`;
-    const results = await axios.get(url);
-    console.log(results.data);
-    const forecastData = results.data.data.map(weatherForecast => new WeatherForecast(weatherForecast));
-    res.status(200).send(forecastData);
-    console.log('weather function was ran')
-    console.log(req.query)
-    try {
-        const cityToSend = weather.find(city => {
-            if((city.lat === lat && city.lon === lon) || city.city_name === cityName) {
-                return true;
-            }
-            return false;
-        });
-        if (cityToSend) {
-            const forecastData = cityToSend.data.map(city => new WeatherForecast(city));
-            console.log(forecastData)
-            res.status(200).send(forecastData)
-        } else {
-            res.status(404).send('City is not found')
-        }
-    } catch (e) {
-        res.status(500).send('server error')
+class Forecast {
+    constructor(obj) {
+        this.date = obj.datetime;
+        this.description = `a high of ${obj.max_temp}, a low of ${obj.min_temp}, with ${obj.weather.description}` 
     }
 }
+
+function handleGetWeather (req, res) {
+    const city_name = req.query.city_name;
+    const cityMatch = weatherData.find(city => city.city_name.toLowerCase() === city_name.toLowerCase());
+    if (cityMatch) {
+        let weatherDescription = cityMatch.data.map(day => new Forecast(day));
+        res.status(200).send(weatherDescription);
+    } else {
+        res.status(400).send('sorry no data for entered city');
+    }
+}
+//     const lat = req.query.lat
+//     const lon = req.query.lon
+//     const url=`https://api.weatherbit.io/v2.0/forecast/daily?lat=${lat}&lon=${lon}&key=${process.env.WEATHER_API_KEY}`;
+//     const results = await axios.get(url);
+//     console.log(results.data);
+//     const forecastData = results.data.data.map(weatherForecast => new WeatherForecast(weatherForecast));
+//     res.status(200).send(forecastData);
+//     console.log('weather function was ran')
+//     console.log(req.query)
+//     try {
+//         const cityToSend = weather.find(city => {
+//             if((city.lat === lat && city.lon === lon) || city.city_name === cityName) {
+//                 return true;
+//             }
+//             return false;
+//         });
+//         if (cityToSend) {
+//             const forecastData = cityToSend.data.map(city => new WeatherForecast(city));
+//             console.log(forecastData)
+//             res.status(200).send(forecastData)
+//         } else {
+//             res.status(404).send('City is not found')
+//         }
+//     } catch (e) {
+//         res.status(500).send('server error')
+//     }
+// }
 
 
 async function handleGetMovies (req, res) {
